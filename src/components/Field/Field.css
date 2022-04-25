@@ -1,0 +1,20 @@
+.field {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+}
+
+.field:nth-child(-2n+10), 
+.field:nth-child(10) ~ .field:nth-child(-2n+19), 
+.field:nth-child(20) ~ .field:nth-child(-2n+30),
+.field:nth-child(30) ~ .field:nth-child(-2n+39),
+.field:nth-child(40) ~ .field:nth-child(-2n+50),
+.field:nth-child(50) ~ .field:nth-child(-2n+59),
+.field:nth-child(60) ~ .field:nth-child(-2n+70),
+.field:nth-child(70) ~ .field:nth-child(-2n+79),
+.field:nth-child(80) ~ .field:nth-child(-2n+90),
+.field:nth-child(90) ~ .field:nth-child(-2n+99) {
+    background-color: #000;
+    color: #fff;
+}

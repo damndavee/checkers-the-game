@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
+import Board from './components/Board/Board';
 
 function App() {
 
@@ -10,7 +11,7 @@ function App() {
 
   return (
     <React.Fragment>
-      <h1>CHECKERS</h1>
+      <Board />
     </React.Fragment>
   );
 }
