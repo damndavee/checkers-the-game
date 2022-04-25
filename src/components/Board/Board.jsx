@@ -22,7 +22,7 @@ const Board = (props) => {
 
     return (
         <div className="board">
-            {board.fields.map(field => <Field x={field.x} y={field.y} />)}
+            {board.fields.map(field => <Field x={field.x} y={field.y} pawn={field.pawn} />)}
         </div>
     );
 }
