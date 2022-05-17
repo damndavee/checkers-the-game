@@ -1,21 +1,21 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Droppable } from 'react-beautiful-dnd';
 import { DragDropContext } from 'react-beautiful-dnd';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { boardActions, gameActions } from '../../store';
-import {checkMovePossibility, checkTakeoverPossibility} from '../../utils/moveDetection';
+
 import Field from '../Field/Field';
 
 import "./Board.css";
 
 const Board = (props) => {
-
     const dispatch = useDispatch();
+
+    const [canTakeoverHappen, setCanTakeoverHappen] = useState(false);
+
     const board = useSelector(state => state.board);
     const turn = useSelector(state => state.game.turn);
-
-    // const turn = "white";
 
     useEffect(() => {
         if(board.fields.length === 0) {
@@ -24,24 +24,115 @@ const Board = (props) => {
         }
     }, [board, dispatch]);
 
+    const checkMove = (destination, source) => {
+
+        const {index: indexDest, x: xDest, y: yDest, pawn} = destination;
+        const {index: indexSrc, x: xSrc, y: ySrc} = source;
+
+        // check whether takoever can happen or not.
+        // create an extra case for takeover -> that creates a window to simplefy the existing code = no need to duplicate the same code for different case
+
+        switch(true) {
+            case indexDest === indexSrc: {
+                return "YOU CANNOT ENTER FIELD THAT YOU ARE OCCUPYING";
+            }
+
+            case pawn.apperance: {
+                return "YOU ARE APPROACHING A FIELD THAT IS ALREADY OCCUPIED!";
+            }
+
+            // refactor cases for detecting takeovers -> there is a code duplication
+            case (turn === "white" && canTakeoverHappen && (yDest === ySrc + 2 && (xDest === xSrc + 2 || xDest === xSrc - 2))): {
+                const takeoverSide = checkTakeoverSide(xDest, xSrc);
+                const {index, field} = getTakeoveredField(xDest, yDest, takeoverSide);
+
+                if(!field.pawn) return "CANNOT TAKEOVER THE FIELD";
+                
+                dispatch(boardActions.takeover({index}));
+
+                return "WHITE DESTINATION FIELD AFTER TAKEOVER";
+            }
+
+            case (turn === "black" && canTakeoverHappen && (yDest === ySrc - 2 && (xDest === xSrc + 2 || xDest === xSrc - 2))): {
+                // const takeoverSide = checkTakeoverSide(xDest, xSrc);
+                // const fieldsToTakeover = getTakeoveredField(xDest, yDest, takeoverSide);
+
+                // console.log("FIELD TO BEING TAKEOVER: ", fieldsToTakeover);
+                // console.log("TAKEOVER SIDE", takeoverSide);
+                return "BLACK DESTINATION FIELD AFTER TAKEOVER";
+            }
+
+            case (turn === "white" && !(yDest === ySrc + 1 && (xDest === xSrc + 1 || xDest === xSrc -1))): {
+                return "WHITE MOVE IS NOT ALLOWED!"
+            }
+
+            case (turn === "black" && !(yDest === ySrc - 1 && (xDest === xSrc + 1 || xDest === xSrc -1))): {
+                return "BLACK MOVE IS NOT ALLOWED!";
+            }
+
+            default: {
+                return "MOVE IS POSSIBLE!";
+            }
+        }
+    }
+
+    const checkTakeoverSide = (destX, srcX) => destX ===  srcX - 2 ? "left" : "right";
+
+    const getTakeoveredField = (destX, destY, side) => {
+        const yAxisIndex = turn === "white" ? -1 : 1;
+        const sideIndex = side === "left" ? 1 : -1;
+        
+        return {
+            index:  board.fields.findIndex(({x, y}) => x === destX + sideIndex && y === destY + yAxisIndex),
+            field:  board.fields.find(({x, y}) => x === destX + sideIndex && y === destY + yAxisIndex)
+        };
+    }
+
+    const checkTakeover = (source) => {
+        const {fields} = board;
+
+        const yAxisIndex = turn === "white" ? 1 : -1;
+
+        const fieldsToTakeover = fields.filter(({x, y}) => (x === source.x - 1 || x === source.x + 1) && y === source.y + yAxisIndex);
+        const pawns = fieldsToTakeover.map(field => field.pawn);
+
+        if(!pawns.some(pawn => pawn.player)) return setCanTakeoverHappen(false);
+
+        setCanTakeoverHappen(true);
+    }
+
     const onDragEndHandler = (result) => {
         if(!result.destination) return;
-    
-        const [xDest, yDest] = result.destination.droppableId.split("-");
-        const [xSrc, ySrc] = result.source.droppableId.split("-");
 
-        const destinationFieldIndex = board.fields.findIndex(f => f.x === +xDest && f.y === +yDest);
-        const sourceFieldIndex = board.fields.findIndex(f => f.x === +xSrc && f.y === +ySrc);
-        
-        const destinationField = board.fields[destinationFieldIndex];
-        const sourceField = board.fields[sourceFieldIndex];
+        const {source, destination} = result;
+        const {fields} = board;
 
-        const isMovePossible = checkMovePossibility(destinationField, xSrc, ySrc, turn);
+        const [srcX, srcY] = source.droppableId.split("-").map(coord => +coord);
+        const [destX, destY] = destination.droppableId.split("-").map(coord => +coord);
 
-        if(!isMovePossible) return;
+        const destinationFieldIndex = fields.findIndex(({x, y}) => x === destX && y === destY);
+        const destinationField = {...fields[destinationFieldIndex], index: destination.index};
 
-        dispatch(boardActions.movePawn({sourceIndex: sourceFieldIndex, destinationIndex: destinationFieldIndex, pawn: sourceField.pawn}));
+        const sourceFieldIndex = fields.findIndex(({x, y}) => x === srcX && y === srcY);
+        const sourceField = {...fields[sourceFieldIndex], index: source.index};
+
+        const move = checkMove(destinationField, sourceField)
+
+        console.log(move);
+
+        // const isMovePossible = checkMovePossibility(destinationField, {xSrc, ySrc}, turn, board.fields);
+
+        // if(!isMovePossible) return;
+
+        dispatch(boardActions.movePawn({
+            destination: destinationField,
+            sourceIndex: sourceFieldIndex, 
+            destinationIndex: destinationFieldIndex, 
+            pawn: sourceField.pawn
+        }));
         dispatch(gameActions.changeTurn());
+
+        setCanTakeoverHappen(false);
 
         // console.log("MOŻNA GRAĆ DALEJ");
     }
@@ -50,14 +141,8 @@ const Board = (props) => {
         const [xSrc, ySrc] = start.source.droppableId.split("-");
         const sourceField = board.fields.find(f => f.x === +xSrc && f.y === +ySrc);
 
-        const isTakeoverPossible = checkTakeoverPossibility(sourceField, board.fields, turn);
-        // const isTakeoverPossibleB = checkTakeoverPossibility(sourceField, board.fields, "black");
-        
-        console.log(isTakeoverPossible);
+        checkTakeover(sourceField);
 
-        // if(!isTakeoverPossible) return;
-
-        // console.log("START DRAGGIN: ", start);
 
     }  
 

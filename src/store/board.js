@@ -5,6 +5,7 @@ const boardSlice = createSlice({
     initialState: {
         players: [],
         fields: [],
+        takeoverBin: [],
         size: 10,
     },
     reducers: {
@@ -26,7 +27,10 @@ const boardSlice = createSlice({
                                 apperance: true,
                                 color: "#fff",
                                 outline: "#000",
-                                player: "white"
+                                player: "white",
+                                x: i,
+                                y: j
+
                             };
                         }
                     }        
@@ -37,7 +41,9 @@ const boardSlice = createSlice({
                                 apperance: true,
                                 color: "#000",
                                 outline: "#fff",
-                                player: "black"
+                                player: "black",
+                                x: i,
+                                y: j
                             };
                         }
                     }        
@@ -53,9 +59,23 @@ const boardSlice = createSlice({
 
         },
 
+        takeover(state, action) {
+
+            state.takeoverBin.push(state.fields[action.payload.index]);
+            state.fields[action.payload.index].pawn = false;
+            // 1. take field that should be takeoverd
+            // 2. change the pawn state to false
+        },
+
         movePawn(state, action) {
-            state.fields[action.payload.sourceIndex].pawn = false;
-            state.fields[action.payload.destinationIndex].pawn = action.payload.pawn;
+            const {destination, sourceIndex, destinationIndex} = action.payload;
+
+            state.fields[sourceIndex].pawn = false;
+            state.fields[destinationIndex].pawn = {
+                ...action.payload.pawn,
+                x: destination.x,
+                y: destination.y
+            };
         }
     }
 })
